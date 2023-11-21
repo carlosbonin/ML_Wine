@@ -1,0 +1,66 @@
+import pandas as pd
+from warnings import simplefilter
+import numpy as np
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split, GridSearchCV
+import matplotlib.pyplot as plt  # Import matplotlib for plotting
+from pandas.plotting import scatter_matrix  # Import scatter_matrix
+
+# Suppress FutureWarnings
+simplefilter(action='ignore', category=FutureWarning)
+
+# Read the wine.data dataset
+wine_data = pd.read_csv('Path_of_Original_File/wine.data', header=None)
+wine_data.columns = ['class', 'alcohol', 'malic_acid', 'ash', 'alcalinity_of_ash', 'magnesium', 'total_phenols', 'flavanoids', 'nonflavanoid_phenols', 'proanthocyanins', 'color_intensity', 'hue', 'od280/od315_of_diluted_wines', 'proline']
+
+# Display dataset information
+print("Basic Statistics:", wine_data.describe())
+print("Missing Values:", wine_data.isnull().sum())
+print("Unique Classes:", wine_data['class'].unique())
+
+# Create the scatter matrix plot
+scatter_matrix(wine_data.iloc[:, 1:], alpha=0.2, figsize=(15, 15), diagonal='hist')
+plt.suptitle("Scatter Matrix of Wine Dataset")
+plt.show()
+
+
+# Split dataset into features and labels
+X_wine = wine_data.iloc[:, 1:].values  # Features (all columns except 'class')
+y_wine = wine_data.iloc[:, 0].values  # Labels ('class')
+
+# Split the data into training, validation, and test sets
+X_wine_train_val, X_wine_test, y_wine_train_val, y_wine_test = train_test_split(X_wine, y_wine, test_size=0.3, random_state=42)
+X_wine_train, X_wine_val, y_wine_train, y_wine_val = train_test_split(X_wine_train_val, y_wine_train_val, test_size=0.28, random_state=42)
+
+# Print shapes to confirm the split
+print(X_wine_train.shape, X_wine_val.shape, X_wine_test.shape)
+print(y_wine_train.shape, y_wine_val.shape, y_wine_test.shape)
+
+# Initialize k-NN classifier
+knn_wine = KNeighborsClassifier(n_neighbors=3)
+
+# Fit the model to the training data
+knn_wine.fit(X_wine_train, y_wine_train)
+
+# Evaluate on the validation data
+y_wine_val_pred = knn_wine.predict(X_wine_val)
+print("## Validation Performance ##")
+print(classification_report(y_wine_val, y_wine_val_pred))
+
+# Hyperparameter tuning
+param_grid_wine = {'n_neighbors': [1, 3, 5, 7, 9, 11],
+                   'metric': ['euclidean', 'manhattan', 'minkowski'],
+                   'weights': ['uniform', 'distance']}
+grid_search_wine = GridSearchCV(KNeighborsClassifier(), param_grid_wine, cv=5)
+grid_search_wine.fit(X_wine_train, y_wine_train)
+print("Best hyperparameters:", grid_search_wine.best_params_)
+
+# Fit the model with the best hyperparameters
+best_knn_wine = grid_search_wine.best_estimator_
+best_knn_wine.fit(X_wine_train, y_wine_train)
+
+# Evaluate on the test data
+y_wine_pred = best_knn_wine.predict(X_wine_test)
+print("## Test Performance ##")
+print(classification_report(y_wine_test, y_wine_pred))
